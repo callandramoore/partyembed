@@ -27,8 +27,8 @@ class Interpret(object):
         
     def sorted_vocab(self, min_count=100, max_count=10000, max_features=10000):
         wordlist=[]
-        for word, vocab_obj in self.model.wv.vocab.items():
-            wordlist.append((word, vocab_obj.count))
+        for word in self.model.wv.index_to_key:
+            wordlist.append((word, self.model.wv.get_vecattr(word,'count')))
         wordlist = sorted(wordlist, key=lambda tup: tup[1], reverse=True)
         return [w for w,c in wordlist if c>min_count and c<max_count and w.count('_')<3][0:max_features]
     

@@ -4,6 +4,7 @@ import pkg_resources
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from sklearn.decomposition import PCA
 from gensim.models.doc2vec import Doc2Vec
 from partyembed.utils.labels import party_labels, party_tags
@@ -36,6 +37,10 @@ class Explore(object):
                 self.model = Doc2Vec.load(MODEL_PATH + 'uk200')
                 self.country = 'UK'
                 self.chamber = None
+            elif model=='38_42Parl':
+                self.model = Doc2Vec.load(MODEL_PATH + '38to42Parl')
+                self.country = 'Canada_MPs'
+                self.chamber = None
             else:
                 raise ValueError("Model must be House, Senate, Canada or UK, but you entered %s." % model)
         elif type(model)==Doc2Vec:
@@ -50,7 +55,7 @@ class Explore(object):
         self.method = method
         self.label_dict = party_labels(self.country)
         self.fullnames, self.parties, self.cols, self.mkers = party_tags(self.model, self.country)
-        self.labels = [self.label_dict[p] for p in self.parties]
+        self.labels = [p.partition('_')[0] + ' ' + p.partition('_')[2].partition('_')[2] for p in self.parties]
         self.P = len(self.parties)
         self.components = dimensions
         self.placement = self.dimension_reduction()
@@ -80,8 +85,13 @@ class Explore(object):
                 Z['dim2'] = Z.dim2 * (-1)
                 self.reverse_dim2 = True
         if self.country=='Canada' and self.method!='guided':
-            if Z[Z.party_label=='NDP 2015'].dim1.values[0] > Z[Z.party_label=='Cons 2015'].dim1.values[0]:
+            if Z[Z.party_label=='NDP 1873'].dim1.values[0] > Z[Z.party_label=='Cons 1873'].dim1.values[0]:
                 Z['dim1'] = Z.dim1 * (-1)
+                self.reverse_dim1 = True
+        if self.country=='Canada_MPs' and self.method!='guided':
+            if Z[Z.party_label=='Thomas Mulcair 42'].dim1.values[0] > Z[Z.party_label=='Pierre Poilievre 42'].dim1.values[0]:
+                Z['dim1'] = Z.dim1 * (1)
+                Z['dim2'] = Z.dim2 * (-1)
                 self.reverse_dim1 = True
         if self.country=='UK' and self.method!='guided':
             if Z[Z.party_label=='Labour 2010'].dim1.values[0] > Z[Z.party_label=='Cons 2010'].dim1.values[0]:
@@ -89,23 +99,39 @@ class Explore(object):
                 self.reverse_dim1 = True
         return Z
 
-    def plot(self, axisnames=None, savepath=None, xlim=None):
-
-        import matplotlib as mpl
+    def plot(self, axisnames=None, savepath=None, xlim=None, labels=None):
         mpl.rcParams['axes.titlesize'] = 20
         mpl.rcParams['axes.labelsize'] = 20
         mpl.rcParams['font.size'] = 14
 
         plt.figure(figsize=(22,15))
-        plt.scatter(self.placement.dim1, self.placement.dim2, color=self.cols)
+        # for 38th through 42nd Parliaments by MP
+        mkers = ['o', '^', 's', 'P', 'D']
+        parlind = ['42', '41', '40', '39', '38']
+        x = [[self.placement.dim1[i] for i in range(len(self.parties)) if parl in self.parties[i]] for parl in parlind]
+        y = [[self.placement.dim2[i] for i in range(len(self.parties)) if parl in self.parties[i]] for parl in parlind]
+        cols = [[self.cols[i] for i in range(len(self.parties)) if parl in self.parties[i]] for parl in parlind]
+
+        for i in range(len(parlind)):
+            plt.scatter(x[i], y[i], color=cols[i], marker=mkers[i])
+
+        label42 = mpl.lines.Line2D([], [], color='black', marker='o', markersize=15, label='42 (2015-2019) Lib maj', linestyle=' ')
+        label41 = mpl.lines.Line2D([], [], color='black', marker='^', markersize=15, label='41 (2011-2015) Con maj', linestyle=' ')
+        label40 = mpl.lines.Line2D([], [], color='black', marker='s', markersize=15, label='40 (2008-2011) Con min', linestyle=' ')
+        label39 = mpl.lines.Line2D([], [], color='black', marker='P', markersize=15, label='39 (2006-2008) Con min', linestyle=' ')
+        label38 = mpl.lines.Line2D([], [], color='black', marker='D', markersize=15, label='38 (2004-2006) Lib min', linestyle=' ')
+        plt.legend(handles=[label42, label41, label40, label39, label38])
+        
         texts=[]
-        for label, x, y, c in zip(self.labels, self.placement.dim1, self.placement.dim2, self.cols):
-            plt.annotate(
-                label,
-                xy=(x, y), xytext=(-20, 20),
-                textcoords='offset points', ha='right', va='bottom',
-                bbox=dict(boxstyle='round,pad=0.5', fc=c, alpha=0.3),
-                arrowprops=dict(arrowstyle = '->', connectionstyle='arc3,rad=0'))
+
+        if labels:
+            for label, x, y, c in zip(self.labels, self.placement.dim1, self.placement.dim2, self.cols):
+                plt.annotate(
+                    label,
+                    xy=(x, y), xytext=(-20, 20),
+                    textcoords='offset points', ha='right', va='bottom',
+                    bbox=dict(boxstyle='round,pad=0.5', fc=c, alpha=0.3),
+                    arrowprops=dict(arrowstyle = '->', connectionstyle='arc3,rad=0'))
         if xlim:
             plt.xlim(xlim)
         if axisnames:

@@ -11,11 +11,12 @@ UK_COL = {'lab': '#D50000', 'con': '#0087DC', 'lib': '#FDBB3A'}
 USA_MK = {'dem': 'o', 'rep': 's'}
 CA_MK = {'lib': 's', 'con': '^', 'ndp': 'o', 'bloc': 'D', 'ref': 'x'}
 UK_MK = {'lab': 'o', 'con': '^', 'lib': 's'}
+YR_MK = {'42': 'o', '41': '^', '40': 's', '39': 'P', '38': 'D'}
 
 # Full party names.
 USA_NAMES = {'dem':'Democrats', 'rep':'Republicans'}
 UK_NAMES = {'con':'Conservatives','lib':'Liberal-Democrats','lab':'Labour'}
-CA_NAMES = {'bloc':'Bloc Quebecois', 'lib': 'Liberal','ref':'Reform-Alliance','con':'Conservatives','ndp':'NDP'}
+CA_NAMES = {'bloc':'Bloc Québécois', 'lib': 'Liberal','ref':'Reform-Alliance','con':'Conservatives','ndp':'New Democratic Party'}
 
 def party_labels(country):
 
@@ -26,6 +27,17 @@ def party_labels(country):
         usa_labels = {'D_'+str(i): 'Dem '+str(usa_index_toyear[i]) for i in congress}
         usa_labels.update({'R_'+str(i): 'Rep '+str(usa_index_toyear[i]) for i in congress})
         return usa_labels
+    elif country=='Canada_MPs':
+        congress = [i for i in range(42,114)]
+        years = [i for i in range(1873,2017,2)]
+        usa_index_toyear = {c:y for c,y in zip(congress, years)}
+        can_labels = {'Liberal_'+str(i): 'Liberal '+str(usa_index_toyear[i]) for i in usa_index_toyear.keys()}
+        can_labels.update({'Reform-Alliance_'+str(i): 'RefAll '+str(usa_index_toyear[i]) for i in usa_index_toyear.keys()})
+        can_labels.update({'Bloc Québécois_'+str(i): 'Bloc '+str(usa_index_toyear[i]) for i in usa_index_toyear.keys()})
+        can_labels.update({'Conservative_'+str(i): 'Cons '+str(usa_index_toyear[i]) for i in usa_index_toyear.keys()})
+        can_labels.update({'New Democratic Party_'+str(i): 'NDP '+str(usa_index_toyear[i]) for i in usa_index_toyear.keys()})
+        can_labels.update({'Green Party_'+str(i): 'Green '+str(usa_index_toyear[i]) for i in usa_index_toyear.keys()})
+        return can_labels
     elif country=='Canada':
         can_index_toyear = {9.0: '1901', 10.0: '1904', 11.0: '1908', 12.0: '1911', 13.0: '1918', 14.0: '1922', 15.1: '1925.1', 15.2: '1925.2',
         16.0: '1926', 17.0: '1930', 18.0: '1935', 19.0: '1940', 20.0: '1945', 21.0: '1949', 22.0: '1953', 23.0: '1957',
@@ -51,31 +63,47 @@ def party_labels(country):
 def party_tags(model, country, grayscale=False):
 
     if country=='USA':
-        democrats = [d for d in model.docvecs.offset2doctag if d.startswith('D_')]
-        republicans = [d for d in model.docvecs.offset2doctag if d.startswith('R_')]
+        democrats = [d for d in model.dv.index_to_key if d.startswith('D_')]
+        republicans = [d for d in model.dv.index_to_key if d.startswith('R_')]
         parties = democrats + republicans
         cols = [USA_COL['dem']]*len(democrats) + [USA_COL['rep']]*len(republicans)
         mkers = [USA_MK['dem']]*len(democrats) + [USA_MK['rep']]*len(republicans)
         fullnames = [USA_NAMES['dem']]*len(democrats) + [USA_NAMES['rep']]*len(republicans)
         return (fullnames, parties, cols, mkers)
     elif country=='Canada':
-        ndp = [d for d in model.docvecs.offset2doctag if 'NDP' in d]
-        bloc = [d for d in model.docvecs.offset2doctag if 'Bloc' in d]
-        liberals = [d for d in model.docvecs.offset2doctag if 'Liberal' in d]
-        conservatives = [d for d in model.docvecs.offset2doctag if 'Conservative' in d]
-        reform = [d for d in model.docvecs.offset2doctag if 'Reform-Alliance' in d]
-        parties = ndp + bloc + liberals + conservatives + reform
+        ndp = [d for d in model.dv.index_to_key if 'New Democratic Party' in d]
+        bloc = [d for d in model.dv.index_to_key if 'Bloc Québécois' in d]
+        liberals = [d for d in model.dv.index_to_key if 'Liberal' in d]
+        conservatives = [d for d in model.dv.index_to_key if 'Conservative' in d]
+        reform = [d for d in model.dv.index_to_key if 'Reform-Alliance' in d]
+        green = [d for d in model.dv.index_to_key if 'Green' in d]
+        parties = ndp + bloc + liberals + conservatives + reform + green
         cols = [CA_COL['ndp']]*len(ndp) + [CA_COL['bloc']]*len(bloc) + \
-               [CA_COL['lib']]*len(liberals) + [CA_COL['con']]*len(conservatives) + [CA_COL['ref']]*len(reform)
+               [CA_COL['lib']]*len(liberals) + [CA_COL['con']]*len(conservatives) + [CA_COL['ref']]*len(reform) + [CA_COL['ref']]*len(green)
         mkers = [CA_MK['ndp']]*len(ndp) + [CA_MK['bloc']]*len(bloc) + \
-               [CA_MK['lib']]*len(liberals) + [CA_MK['con']]*len(conservatives) + [CA_MK['ref']]*len(reform)
+               [CA_MK['lib']]*len(liberals) + [CA_MK['con']]*len(conservatives) + [CA_MK['ref']]*len(reform) + [CA_MK['ref']]*len(green)
         fullnames = [CA_NAMES['ndp']]*len(ndp) + [CA_NAMES['bloc']]*len(bloc) + \
-               [CA_NAMES['lib']]*len(liberals) + [CA_NAMES['con']]*len(conservatives) + [CA_NAMES['ref']]*len(reform)
+               [CA_NAMES['lib']]*len(liberals) + [CA_NAMES['con']]*len(conservatives) + [CA_NAMES['ref']]*len(reform) + [CA_NAMES['ref']]*len(green)
         return (fullnames, parties, cols, mkers)
+    elif country=='Canada_MPs':
+        ndp = [d for d in model.dv.index_to_key if 'New Democratic Party' in d]
+        bloc = [d for d in model.dv.index_to_key if 'Bloc Québécois' in d]
+        liberals = [d for d in model.dv.index_to_key if 'Liberal' in d]
+        conservatives = [d for d in model.dv.index_to_key if 'Conservative' in d]
+        reform = [d for d in model.dv.index_to_key if 'Reform-Alliance' in d]
+        green = [d for d in model.dv.index_to_key if 'Green' in d]
+        allMPs = ndp + bloc + liberals + conservatives + reform + green
+
+        years = [d[len(d)-2: len(d)] for d in model.dv.index_to_key]
+        cols = [CA_COL['ndp']]*len(ndp) + [CA_COL['bloc']]*len(bloc) + \
+               [CA_COL['lib']]*len(liberals) + [CA_COL['con']]*len(conservatives) + [CA_COL['ref']]*len(reform) + [CA_COL['ref']]*len(green)
+        mkers = [YR_MK[d] for d in years]
+        fullnames = [root.partition('_')[0] for root in allMPs]
+        return (fullnames, allMPs, cols, mkers)
     elif country=='UK':
-        labour = [d for d in model.docvecs.offset2doctag if 'Lab' in d]
-        liberals = [d for d in model.docvecs.offset2doctag if 'Lib' in d]
-        conservatives = [d for d in model.docvecs.offset2doctag if 'Con' in d]
+        labour = [d for d in model.dv.index_to_key if 'Lab' in d]
+        liberals = [d for d in model.dv.index_to_key if 'Lib' in d]
+        conservatives = [d for d in model.dv.index_to_key if 'Con' in d]
         parties = labour + liberals + conservatives
         cols = [UK_COL['lab']]*len(labour) + [UK_COL['lib']]*len(liberals) + [UK_COL['con']]*len(conservatives)
         mkers = [UK_MK['lab']]*len(labour) + [UK_MK['lib']]*len(liberals) + [UK_MK['con']]*len(conservatives)
